@@ -14,10 +14,23 @@ jobs:
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
 
-    - name: Create RDP User
+    - name: Setup RDP User and Password
       run: |
-        net user RunnerAdmin "P@ssword1234!" /add
-        net localgroup administrators RunnerAdmin /add
+        $user = "RunnerAdmin"
+        $pass = "P@ssword1234!"
+        
+        # Check agar user pehle se hai ya nahi, nahi toh create karega
+        if (Get-LocalUser -Name $user -ErrorAction SilentlyContinue) {
+            Write-Host "User $user already exists. Updating password..."
+            $secPass = ConvertTo-SecureString $pass -AsPlainText -Force
+            Set-LocalUser -Name $user -Password $secPass
+        } else {
+            Write-Host "Creating new user $user..."
+            net user $user $pass /add
+        }
+        
+        # Ensure user is in Administrators group
+        net localgroup administrators $user /add
 
     - name: Install and Setup Tailscale
       run: |
