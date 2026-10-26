@@ -14,25 +14,14 @@ jobs:
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
 
-    - name: Setup RDP User and Password
+    - name: Create Custom RDP User
       run: |
-        $user = "RunnerAdmin"
+        $user = "MyRDPUser"
         $pass = "P@ssword1234!"
         
-        # Password set karna ya user banana bina error crash ke
-        net user $user $pass | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "User already exists, updating password..."
-            $secPass = ConvertTo-SecureString $pass -AsPlainText -Force
-            Set-LocalUser -Name $user -Password $secPass
-        }
-        
-        # Group add error bypass karne ke liye try-catch
-        try {
-            net localgroup administrators $user /add 2>&1 | Out-Null
-        } catch {
-            Write-Host "User is already in administrators group."
-        }
+        # Naya user create karna aur admin group mein dalna
+        net user $user $pass /add
+        net localgroup administrators $user /add
 
     - name: Install and Setup Tailscale
       run: |
@@ -46,7 +35,7 @@ jobs:
         Write-Host "==================================================" -ForegroundColor Cyan
         Write-Host " Tailscale IP Address : $ip" -ForegroundColor Yellow
         Write-Host " Connect using RDP to : $ip:3389" -ForegroundColor Yellow
-        Write-Host " Username             : RunnerAdmin" -ForegroundColor Yellow
+        Write-Host " Username             : MyRDPUser" -ForegroundColor Yellow
         Write-Host " Password             : P@ssword1234!" -ForegroundColor Yellow
         Write-Host "==================================================" -ForegroundColor Cyan
 
