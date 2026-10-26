@@ -1,0 +1,44 @@
+name: Windows RDP Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rdp-build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Enable Remote Desktop
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+
+    - name: Create RDP User
+      run: |
+        net user RunnerAdmin "P@ssword1234!" /add
+        net localgroup administrators RunnerAdmin /add
+
+    - name: Install and Setup Tailscale
+      run: |
+        Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe" -OutFile "tailscale-setup.exe"
+        Start-Process -FilePath ".\tailscale-setup.exe" -ArgumentList "/quiet" -Wait
+        & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=github-rdp-node
+
+    - name: Get RDP Connection IP
+      run: |
+        $ip = & "C:\Program Files\Tailscale\tailscale.exe" ip -4
+        Write-Host "==================================================" -ForegroundColor Cyan
+        Write-Host " Tailscale IP Address : $ip" -ForegroundColor Yellow
+        Write-Host " Connect using RDP to : $ip:3389" -ForegroundColor Yellow
+        Write-Host " Username             : RunnerAdmin" -ForegroundColor Yellow
+        Write-Host " Password             : P@ssword1234!" -ForegroundColor Yellow
+        Write-Host "==================================================" -ForegroundColor Cyan
+
+    - name: Keep Workflow Alive
+      run: |
+        $i = 1
+        while ($i -le 360) {
+            Start-Sleep -Seconds 60
+            $i++
+        }
